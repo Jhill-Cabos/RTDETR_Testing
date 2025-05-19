@@ -1,15 +1,34 @@
 import streamlit as st
 import cv2
 import numpy as np
-from PIL import Image, ImageDraw
+from PIL import Image
 import tempfile
 import os
 from ultralytics import RTDETR
 
+# Load RT-DETR model
 model = RTDETR("best.pt")
 
-st.set_page_config(page_title="Object Detection App (RT-DETR)", layout="wide")
-st.title("🚗 Object Detection App (RT-DETR)")
+# Set correct class names
+model.names = {
+    0: 'c0 - Safe Driving',
+    1: 'c1 - Texting',
+    2: 'c2 - Talking on the phone',
+    3: 'c3 - Operating the Radio',
+    4: 'c4 - Drinking',
+    5: 'c5 - Reaching Behind',
+    6: 'c6 - Hair and Makeup',
+    7: 'c7 - Talking to Passenger',
+    8: 'd0 - Eyes Closed',
+    9: 'd1 - Yawning',
+    10: 'd2 - Nodding Off',
+    11: 'd3 - Eyes Open',
+    12: 'e1 - Seat Belt'
+}
+
+# Streamlit UI setup
+st.set_page_config(page_title="RT-DETR Driving Behavior Detection", layout="wide")
+st.title("🚗 Dangerous Driving Behavior Detection (RT-DETR)")
 
 file = st.sidebar.file_uploader("Choose an image or video", type=["jpg", "jpeg", "png", "mp4", "mov"])
 
@@ -26,7 +45,12 @@ if file is not None:
         image = Image.open(file)
         st.image(image, caption="Uploaded Image", use_container_width=True)
 
-        results = model(image, conf=confidence, iou=iou_thresh)
+        # Convert PIL image to BGR numpy array
+        image_np = np.array(image)
+        image_bgr = cv2.cvtColor(image_np, cv2.COLOR_RGB2BGR)
+
+        # Run detection
+        results = model(image_bgr, conf=confidence, iou=iou_thresh)
         annotated_img = results[0].plot()
 
         st.image(annotated_img, caption="Detection Result", use_container_width=True)
@@ -44,8 +68,8 @@ if file is not None:
 
         fourcc = cv2.VideoWriter_fourcc(*'mp4v')
         fps = cap.get(cv2.CAP_PROP_FPS)
-        width = int(cap.get(3))
-        height = int(cap.get(4))
+        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         out = cv2.VideoWriter(out_path, fourcc, fps, (width, height))
 
         stframe = st.empty()
